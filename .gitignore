@@ -1,0 +1,8 @@
+.build
+*.pyc
+
+cmake_build
+build
+BUILD
+.vscode
+.DS_Store
