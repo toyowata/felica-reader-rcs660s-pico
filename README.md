@@ -7,7 +7,7 @@ FeliCa リーダー・ライターを使用したSuica/PASMO履歴リーダで�
 USBケーブルでPaspberry Pi Picoとパソコンと接続し、履歴データを表示させることができます。I2C接続LCDを付ければ、現在の残高を表示します。残高表示は、以下のFelica対応ICカードに対応しています。
 
 * 交通系ICカード: Suica / PASMO / ICOCA / TOICA / Kitaca / SUGOCA / nimoca / はやかけん / manaca / PiTaPa / SAPICA / PASPY / AOPASS / iGUCA / Iwate Green Pass / odeca / cherica / totra / Welcome Suica / ecomayca
-* 電子マネー: PASMO / 楽天Edy / nanaco / WAON
+* 電子マネー: 楽天Edy / nanaco / WAON
 
 また、AS-289R2プリンタシールドを接続すると、Suica/PASMO履歴データを印字することができます。
 
@@ -46,7 +46,7 @@ Pasberry Pi Picoと他の部品は以下のように接続してください。
 # 必要なツールのインストール
 
 ## ツールチェインのインストール
-以下の情報を参照して、ビルドに使用するツールチェインをインストールしてください。
+以下の情報を参照して、ビルドに使用するツールチェインをインストールしてください。  
 https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008276-DS-1-getting-started-with-pico.pdf
 
 ## pico-sdk
@@ -157,7 +157,7 @@ C7 46 00 00 2C CC 3A 0C 4F 97 34 08 00 00 05 00
 ## 注意点と既知の問題
 
 ### プリンタシールド（AS-289R2）の使用
-デフォルトでは、プリント出力を行わないスタブクラス`AS298R2_STUB`が有効になっています。プリンタを使用する場合は、`main.cpp`を以下のように変更してください。
+デフォルトでは、プリント出力を行わないスタブクラス`AS289R2_STUB`が有効になっています。プリンタを使用する場合は、`main.cpp`を以下のように変更してください。
 
 ```cpp
 //AS289R2_STUB tp(AS289R2_UART_TX, AS289R2_UART_RX, uart1);
@@ -173,10 +173,10 @@ https://nuneno.cocolog-nifty.com/blog/2021/03/post-c5ccb6.html
 https://github.com/MasanoriYONO/StationCode
 https://ja.ysrl.org/atc/station-code.html
 
-※リポジトリには生成済みの`sc_utf8.h`が同梱されているため、通常は再変換の作業は不要です
-
 このデータから必要な項目だけを抽出し、csv形式からバイナリ形式に変更を行っています。変換用のツールは以下に公開しました。  
 https://github.com/toyowata/csv2bin
+
+※リポジトリには生成済みの`sc_utf8.h`が同梱されているため、通常は再変換の作業は不要です
 
 ### 制約事項
 誤動作を防ぐために、同じカードを連続して読み込むことはできません。同じカードを読み込む場合は、リセットを行ってください。
