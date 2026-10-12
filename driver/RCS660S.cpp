@@ -124,8 +124,8 @@ int RCS660S::polling(uint16_t systemCode) {
         0x95,       // Tag: Transceive
         0x06, 0x06, // Length
         0x00,       // FeliCa Polling Command (0x00)
-        (uint8_t)((systemCode >> 0) & 0xFF),
         (uint8_t)((systemCode >> 8) & 0xFF),
+        (uint8_t)((systemCode >> 0) & 0xFF),
         0x00, 0x00  // RequestCode=0x00, TimeSlot=0x00
     };
 

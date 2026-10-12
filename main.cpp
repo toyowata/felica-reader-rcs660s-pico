@@ -23,12 +23,12 @@
 #define RCS660S_MAX_CARD_BUFFER_LEN   30
  
 // FeliCa Service/System Code
-#define CYBERNE_SYSTEM_CODE           0x0300
-#define SAPICA_SYSTEM_CODE            0x5E86
-#define PASPY_SYSTEM_CODE             0x9285
-#define RYUTO_SYSTEM_CODE             0x5D8B
-#define COMMON_SYSTEM_CODE            0x00FE
-#define ECOMYCA_SYSTEM_CODE           0x2C83
+#define CYBERNE_SYSTEM_CODE           0x0003
+#define SAPICA_SYSTEM_CODE            0x865E
+#define PASPY_SYSTEM_CODE             0x8592
+#define RYUTO_SYSTEM_CODE             0x8B5D
+#define COMMON_SYSTEM_CODE            0xFE00
+#define ECOMYCA_SYSTEM_CODE           0x832C
 #define PASSNET_SERVICE_CODE          0x090F
 #define FELICA_ATTRIBUTE_CODE         0x008B
 #define KITACA_SERVICE_CODE           0x208B
@@ -41,6 +41,7 @@
 #define SUICA_SERVICE_CODE            0x23CB
 #define MANACA_SERVICE_CODE           0x9888
 #define NIMOCA_SERVICE_CODE           0x1F48
+#define NIMOCA2_SERVICE_CODE          0x10CB
 #define SUICA_PLUS_SERVICE_CODE       0x2888
 #define IOCARD_SERVICE_CODE           0x110A
 #define WSUICA_SERVICE_CODE           0x090A
@@ -335,41 +336,41 @@ int main() {
                 else {
                     isCaptured = 0;
                 }
-            }
-            if (requestService(NANACO_POINT_CODE) && readEncryption(NANACO_POINT_CODE, 1, buf) && isCaptured) {
-                uint32_t point;
-                char info[40];
-                point = buf[12 + 1];
-                point = (point << 8) + buf[12 + 2];
-                snprintf(info, sizeof(info), "nanacoポイント: %ldpt", point);
-                printf("%s\n\n", info);
-                strcat(info, "\r\r");
-                tp.printf("%s", info);
-            }
-            if (requestService(NANACO_BALANCE_CODE) && readEncryption(NANACO_BALANCE_CODE, 0, buf) && isCaptured) {
-                // Little Endianで入っているnanacoの残高を取り出す
-                balance = buf[12 + 0];
-                balance += (buf[12 + 1] << 8);
-                balance += (buf[12 + 2] << 8);
-                balance += (buf[12 + 3] << 8);
-                // 残高表示
-                printBalanceLCD("nanaco", balance);
-                
-                for (int i = 5; i > 0; i--) {
-                    if (readEncryption(NANACO_SERVICE_CODE, i-1, buf)) {
-                        parse_history_nanaco(buf);
-                    }
+                if (requestService(NANACO_POINT_CODE) && readEncryption(NANACO_POINT_CODE, 1, buf) && isCaptured) {
+                    uint32_t point;
+                    char info[40];
+                    point = buf[12 + 1];
+                    point = (point << 8) + buf[12 + 2];
+                    snprintf(info, sizeof(info), "nanacoポイント: %ldpt", point);
+                    printf("%s\n\n", info);
+                    strcat(info, "\r\r");
+                    tp.printf("%s", info);
                 }
-                char info[80];
-                tp.printf("\r");
-                tp.setDoubleSizeWidth();
-                sprintf(info, "\r残高 %ld円\r\r", balance);
-                tp.printf("%s", info);
-                //tp.printf("\r残高 %ld円\r\r", balance);
-                tp.clearDoubleSizeWidth();
-                tp.putLineFeed(3);
+                if (requestService(NANACO_BALANCE_CODE) && readEncryption(NANACO_BALANCE_CODE, 0, buf) && isCaptured) {
+                    // Little Endianで入っているnanacoの残高を取り出す
+                    balance = buf[12 + 0];
+                    balance += (buf[12 + 1] << 8);
+                    balance += (buf[12 + 2] << 8);
+                    balance += (buf[12 + 3] << 8);
+                    // 残高表示
+                    printBalanceLCD("nanaco", balance);
+
+                    for (int i = 5; i > 0; i--) {
+                        if (readEncryption(NANACO_SERVICE_CODE, i-1, buf)) {
+                            parse_history_nanaco(buf);
+                        }
+                    }
+                    char info[80];
+                    tp.printf("\r");
+                    tp.setDoubleSizeWidth();
+                    sprintf(info, "\r残高 %ld円\r\r", balance);
+                    tp.printf("%s", info);
+                    //tp.printf("\r残高 %ld円\r\r", balance);
+                    tp.clearDoubleSizeWidth();
+                    tp.putLineFeed(3);
+                }
             }
-            
+
             // waon
             if (requestService(WAON_SERVICE_ID) && readEncryption(WAON_SERVICE_ID, 0, buf)) {
                 if (memcmp(idm, &buf[12], 8) != 0) {
@@ -384,25 +385,24 @@ int main() {
                 else {
                     isCaptured = 0;
                 }
-            }
-            if (requestService(WAON_SERVICE_CODE1) && readEncryption(WAON_SERVICE_CODE1, 0, buf) && isCaptured) {
-                // Little Endianで入っているwaonの残高を取り出す
-                balance = buf[13];
-                balance = (balance << 8) + buf[12];
-                // 残高表示
-                printBalanceLCD("waon", balance);
+                if (requestService(WAON_SERVICE_CODE1) && readEncryption(WAON_SERVICE_CODE1, 0, buf) && isCaptured) {
+                    // Little Endianで入っているwaonの残高を取り出す
+                    balance = buf[13];
+                    balance = (balance << 8) + buf[12];
+                    // 残高表示
+                    printBalanceLCD("waon", balance);
 
-                parse_history_waon(buf);
+                    parse_history_waon(buf);
 
-                printf("残高 %ld円\n", balance);
-                tp.setDoubleSizeWidth();
-                char info[40];
-                sprintf(info, "残高 %ld円\r\r", balance);
-                tp.printf("%s", info);
-                //tp.printf("残高 %ld円\r\r", balance);
-                tp.clearDoubleSizeWidth();
-                tp.putLineFeed(3);
-
+                    printf("残高 %ld円\n", balance);
+                    tp.setDoubleSizeWidth();
+                    char info[40];
+                    sprintf(info, "残高 %ld円\r\r", balance);
+                    tp.printf("%s", info);
+                    //tp.printf("残高 %ld円\r\r", balance);
+                    tp.clearDoubleSizeWidth();
+                    tp.putLineFeed(3);
+                }
             }
         }
         if (rcs660s.polling(ECOMYCA_SYSTEM_CODE)) {
