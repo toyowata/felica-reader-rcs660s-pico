@@ -69,7 +69,7 @@ elseif (PICO_BOARD STREQUAL "pico" OR PICO_BOARD STREQUAL "pico_w" OR PICO_BOARD
         AS289R2_UART_RX=5
     )
 else()
-    message(FATAL_ERROR "Unknown PICO_BOARD '$ENV{PICO_BOARD}'. Please set LCD_I2C_SDA and LCD_I2C_SCL manually.")
+    message(FATAL_ERROR "Unknown PICO_BOARD '${PICO_BOARD}'. Please set SB1602E_I2C_SDA and SB1602E_I2C_SCL manually.")
 endif()
 
 # enable usb output, disable uart output
