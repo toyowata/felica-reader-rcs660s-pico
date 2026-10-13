@@ -859,8 +859,8 @@ void parse_history_waon(uint8_t *buf)
     int array[3] = {0, 2, 4};
     uint32_t tmp;
     
-    for (int i = 0; i < 3; i += 2) {
-        if (readEncryption(WAON_SERVICE_CODE0, i*2, buf)) {
+    for (int i = 0; i < 3; i++) {
+        if (readEncryption(WAON_SERVICE_CODE0, array[i], buf)) {
             num[i] = buf[12 + 13];
             num[i] = (num[i] << 8) + buf[12 + 14];
         }
@@ -869,6 +869,7 @@ void parse_history_waon(uint8_t *buf)
     for (int i = 0; i < 3 - 1; i++) {
         for (int j = i + 1; j < 3; j++) {
             if (num[i] > num[j]) {
+                SWAP(uint32_t, num[i], num[j]);
                 SWAP(int, array[i], array[j]);
             }
         }
@@ -930,6 +931,9 @@ void parse_history_waon(uint8_t *buf)
                     break;
                 case 0x7C:
                     snprintf(info2, sizeof(info2), "ポイント交換(預入)");
+                    break;
+                default:
+                    snprintf(info2, sizeof(info2), "不明(%02lX)", tmp);
                     break;
             }
             strcat(info, info2);
