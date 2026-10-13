@@ -80,7 +80,8 @@ void parse_history_waon(uint8_t *buf);
 void parse_history_edy(uint8_t *buf);
 void parse_history_ecomyca(uint8_t *buf);
 int get_station_name(char *buf, int area, int line, int station);
-void get_bus_name(char *buf, int code);
+void get_bus_name(char *buf, size_t size, int code);
+void str_append(char *dst, size_t size, const char *src);
 const struct tm *edy_time(int day, int sec);
 
 const uint32_t record_length = (3 + 40 + 40);
@@ -264,7 +265,7 @@ int main() {
                 char info[80];
                 snprintf(info, sizeof(info), "Edy ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12+2], buf[12+3], buf[12+4], buf[12+5], buf[12+6], buf[12+7], buf[12+8], buf[12+9]);
                 printf("%s\n", info);
-                strcat(info, "\r");
+                str_append(info, sizeof(info), "\r");
                 tp.printf("%s", info);
 
                 int tmp;
@@ -276,7 +277,7 @@ int main() {
                 if (pt != NULL) {
                     snprintf(info, sizeof(info), "発行日: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
                     printf("%s\n", info);
-                    strcat(info, "\r");
+                    str_append(info, sizeof(info), "\r");
                     tp.printf("%s", info);
                 }
 
@@ -312,7 +313,7 @@ int main() {
                 char info[40];
                 snprintf(info, sizeof(info), "nanaco ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
                 printf("%s\n", info);
-                strcat(info, "\r");
+                str_append(info, sizeof(info), "\r");
                 tp.printf("%s", info);
 
                 if (requestService(NANACO_POINT_CODE) && readEncryption(NANACO_POINT_CODE, 1, buf)) {
@@ -321,7 +322,7 @@ int main() {
                     point = (point << 8) + buf[12 + 2];
                     snprintf(info, sizeof(info), "nanacoポイント: %ldpt", point);
                     printf("%s\n\n", info);
-                    strcat(info, "\r\r");
+                    str_append(info, sizeof(info), "\r\r");
                     tp.printf("%s", info);
                 }
                 if (requestService(NANACO_BALANCE_CODE) && readEncryption(NANACO_BALANCE_CODE, 0, buf)) {
@@ -354,7 +355,7 @@ int main() {
                 char info[40];
                 snprintf(info, sizeof(info), "WAON ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
                 printf("%s\n\n", info);
-                strcat(info, "\r\r");
+                str_append(info, sizeof(info), "\r\r");
                 tp.printf("%s", info);
 
                 if (requestService(WAON_SERVICE_CODE1) && readEncryption(WAON_SERVICE_CODE1, 0, buf)) {
@@ -472,70 +473,70 @@ void parse_history_suica(uint8_t *buf)
     snprintf(info, sizeof(info), "機種種別: ");
     switch (buf[0]) {
         case 0x03:
-            strcat(info, "のりこし精算機\r");
+            str_append(info, sizeof(info), "のりこし精算機\r");
             break;
         case 0x04:
-            strcat(info, "携帯型端末\r");
+            str_append(info, sizeof(info), "携帯型端末\r");
             break;
         case 0x05:
-            strcat(info, "バス/路面等\r");
+            str_append(info, sizeof(info), "バス/路面等\r");
             break;
         case 0x09:
-            strcat(info, "入金機\r");
+            str_append(info, sizeof(info), "入金機\r");
             break;
         case 0x07:
         case 0x08:
         case 0x12:
-            strcat(info, "券売機\r");
+            str_append(info, sizeof(info), "券売機\r");
             break;
         case 0x14:
         case 0x15:
-            strcat(info, "券売機等\r");
+            str_append(info, sizeof(info), "券売機等\r");
             break;
         case 0x16:
-            strcat(info, "自動改札機\r");
+            str_append(info, sizeof(info), "自動改札機\r");
             break;
         case 0x17:
-            strcat(info, "簡易改札機\r");
+            str_append(info, sizeof(info), "簡易改札機\r");
             break;
         case 0x18:
         case 0x19:
-            strcat(info, "窓口端末\r");
+            str_append(info, sizeof(info), "窓口端末\r");
             break;
         case 0x1A:
-            strcat(info, "改札端末\r");
+            str_append(info, sizeof(info), "改札端末\r");
             break;
         case 0x1B:
-            strcat(info, "モバイルFeliCa\r");
+            str_append(info, sizeof(info), "モバイルFeliCa\r");
             break;
         case 0x1C:
-            strcat(info, "乗継精算機\r");
+            str_append(info, sizeof(info), "乗継精算機\r");
             break;
         case 0x1D:
-            strcat(info, "連絡改札機\r");
+            str_append(info, sizeof(info), "連絡改札機\r");
             break;
         case 0x1F:
-            strcat(info, "簡易入金機\r");
+            str_append(info, sizeof(info), "簡易入金機\r");
             break;
         case 0x22:
-            strcat(info, "窓口処理機\r");
+            str_append(info, sizeof(info), "窓口処理機\r");
             break;
         case 0x23:
-            strcat(info, "乗継精算機\r");
+            str_append(info, sizeof(info), "乗継精算機\r");
             break;
         case 0x46:
         case 0x48:
-            strcat(info, "ビューアルッテ端末\r");
+            str_append(info, sizeof(info), "ビューアルッテ端末\r");
             break;
         case 0xc7:
         case 0xc9:
-            strcat(info, "物販端末\r");
+            str_append(info, sizeof(info), "物販端末\r");
             break;
         case 0xc8:
-            strcat(info, "自販機\r");
+            str_append(info, sizeof(info), "自販機\r");
             break;
         default:
-            strcat(info, "不明\r");
+            str_append(info, sizeof(info), "不明\r");
             break;
     }
     printf("%s", info);
@@ -545,97 +546,98 @@ void parse_history_suica(uint8_t *buf)
     snprintf(info, sizeof(info), "利用種別: ");
     switch (buf[1]) {
         case 0x01:
-            strcat(info, "自動改札出場");
+            str_append(info, sizeof(info), "自動改札出場");
             break;
         case 0x02:
-            strcat(info, "SFチャージ\r");
+            str_append(info, sizeof(info), "SFチャージ\r");
             hasStationName = 1;
             break;
         case 0x03:
-            strcat(info, "きっぷ購入\r");
+            str_append(info, sizeof(info), "きっぷ購入\r");
             hasStationName = 1;
             break;
         case 0x04:
-            strcat(info, "磁気券精算");
+            str_append(info, sizeof(info), "磁気券精算");
             break;
         case 0x05:
-            strcat(info, "乗越精算");
+            str_append(info, sizeof(info), "乗越精算");
             break;
         case 0x06:
-            strcat(info, "窓口精算");
+            str_append(info, sizeof(info), "窓口精算");
             break;
         case 0x07:
-            strcat(info, "新規");
+            str_append(info, sizeof(info), "新規");
             if (line_in == 0 && station_in == 0) {
                 hasStationName = 0;
             }
             else {
-                strcat(info, "\r");
+                str_append(info, sizeof(info), "\r");
                 hasStationName = 1;
             }
             break;
         case 0x08:
-            strcat(info, "チャージ控除");
+            str_append(info, sizeof(info), "チャージ控除");
             break;
         case 0x0C:
         case 0x0D:
         case 0x0F:
-            strcat(info, "バス/路面等\r");
-            get_bus_name(info, ((line_in << 8) | station_in));
+            str_append(info, sizeof(info), "バス/路面等\r");
+            get_bus_name(info, sizeof(info), ((line_in << 8) | station_in));
             break;
         case 0x13:
-            strcat(info, "支払い（新幹線利用）\r");
+            str_append(info, sizeof(info), "支払い（新幹線利用）\r");
             hasStationName = 2;
             break;
         case 0x14:
         case 0x15:
-            strcat(info, "オートチャージ");
+            str_append(info, sizeof(info), "オートチャージ");
             break;
         case 0x46:
-            strcat(info, "物販");
+            str_append(info, sizeof(info), "物販");
             break;
         case 0xc6:
-            strcat(info, "現金併用物販");
+            str_append(info, sizeof(info), "現金併用物販");
             break;
         default:
-            strcat(info, "不明");
+            str_append(info, sizeof(info), "不明");
             break;
     }
     if (hasStationName >= 1) {
         if (get_station_name(info2, region_in, line_in, station_in) != 0) {
-            get_bus_name(info2, ((line_in << 8) | station_in));
+            info2[0] = '\0';
+            get_bus_name(info2, sizeof(info2), ((line_in << 8) | station_in));
         }
-        strcat(info, info2);
+        str_append(info, sizeof(info), info2);
     }
     if (hasStationName == 2) {
-        strcat(info, " - ");
+        str_append(info, sizeof(info), " - ");
         get_station_name(info2, region_out, line_out, station_out);
-        strcat(info, info2);
+        str_append(info, sizeof(info), info2);
     }
     printf("%s\r", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
 
     if (buf[2] != 0) {
         snprintf(info, sizeof(info), "支払種別: ");
         switch (buf[2]) {
             case 0x02:
-                strcat(info, "VIEW");
+                str_append(info, sizeof(info), "VIEW");
                 break;
             case 0x0B:
-                strcat(info, "PiTaPa");
+                str_append(info, sizeof(info), "PiTaPa");
                 break;
             case 0x0d:
-                strcat(info, "オートチャージ対応PASMO");
+                str_append(info, sizeof(info), "オートチャージ対応PASMO");
                 break;
             case 0x3f:
-                strcat(info, "モバイルSuica");
+                str_append(info, sizeof(info), "モバイルSuica");
                 break;
             default:
-                strcat(info, "不明");
+                str_append(info, sizeof(info), "不明");
                 break;
         }
-        strcat(info, "\r");
+        str_append(info, sizeof(info), "\r");
         printf("%s", info);
         tp.printf("%s", info);
     }
@@ -646,64 +648,64 @@ void parse_history_suica(uint8_t *buf)
         switch (buf[3]) {
             case 0x01:
             case 0x08:
-                strcat(info, "入場\r");
+                str_append(info, sizeof(info), "入場\r");
                 hasStationName = 1;
                 break;
             case 0x02:
-                strcat(info, "出場\r");
+                str_append(info, sizeof(info), "出場\r");
                 hasStationName = 2;
                 break;
             case 0x03:
-                strcat(info, "定期入場\r");
+                str_append(info, sizeof(info), "定期入場\r");
                 hasStationName = 1;
                 break;
             case 0x04:
-                strcat(info, "定期出場\r");
+                str_append(info, sizeof(info), "定期出場\r");
                 hasStationName = 2;
                 break;
             case 0x05:
-                strcat(info, "入場乗継\r");
+                str_append(info, sizeof(info), "入場乗継\r");
                 hasStationName = 2;
                 break;
             case 0x0E:
-                strcat(info, "窓口出場");
+                str_append(info, sizeof(info), "窓口出場");
                 break;
             case 0x0F:
-                strcat(info, "バス入出場");
+                str_append(info, sizeof(info), "バス入出場");
                 break;
             case 0x12:
-                strcat(info, "料金定期");
+                str_append(info, sizeof(info), "料金定期");
                 break;
             case 0x17:
             case 0x1D:
-                strcat(info, "乗継割引\r");
+                str_append(info, sizeof(info), "乗継割引\r");
                 hasStationName = 2;
                 break;
             case 0x21:
-                strcat(info, "バス等乗継割引");
+                str_append(info, sizeof(info), "バス等乗継割引");
                 break;
             case 0x22:
             case 0x25:
             case 0x26:
-                strcat(info, "券面外乗降\r");
+                str_append(info, sizeof(info), "券面外乗降\r");
                 hasStationName = 2;
                 break;
             default:
-                strcat(info, "不明");
+                str_append(info, sizeof(info), "不明");
                 snprintf(info2, sizeof(info2), " %02X %02X %02X %02X", buf[6], buf[7], buf[8], buf[9]);
-                strcat(info, info2);
+                str_append(info, sizeof(info), info2);
                 break;
         }
         if (hasStationName >= 1) {
             get_station_name(info2, region_in, line_in, station_in);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
         }
         if (hasStationName == 2) {
-            strcat(info, " - ");
+            str_append(info, sizeof(info), " - ");
             get_station_name(info2, region_out, line_out, station_out);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
         }
-        strcat(info, "\r");
+        str_append(info, sizeof(info), "\r");
         printf("%s", info);
         tp.printf("%s", info);
     }
@@ -711,16 +713,16 @@ void parse_history_suica(uint8_t *buf)
     snprintf(info, sizeof(info), "処理日付: %d/%02d/%02d", 2000+(buf[4]>>1), ((buf[4]&1)<<3 | ((buf[5]&0xe0)>>5)), buf[5]&0x1f);
     if (buf[1] == 0x46 || buf[1] == 0xc6) {   // 物販
         snprintf(info2, sizeof(info2), " %02d:%02d:%02d", (buf[6] & 0xF8) >> 3, ((buf[6] & 0x7) << 3) | ((buf[7] & 0xe0) >> 5), (buf[7] & 0x1f));
-        strcat(info, info2);
+        str_append(info, sizeof(info), info2);
     }
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     printf("%s", info);
     tp.printf("%s", info);
 
     snprintf(info, sizeof(info), "残額: %d円", (buf[11]<<8) + buf[10]); 
     printf("%s\n", info);
     tp.setDoubleSizeWidth();
-    strcat(info, "\r\r");
+    str_append(info, sizeof(info), "\r\r");
     tp.printf("%s", info);
     tp.clearDoubleSizeWidth();
 }
@@ -741,25 +743,25 @@ void parse_history_nanaco(uint8_t *buf)
     printf("\n");
     snprintf(info, sizeof(info), "種別: ");
     if (buf[12] == 0x35) {
-        strcat(info, "引継");
+        str_append(info, sizeof(info), "引継");
     }
     if (buf[12] == 0x47) {
-        strcat(info, "支払い");
+        str_append(info, sizeof(info), "支払い");
     }
     if (buf[12] == 0x6F || buf[12] == 0x70) {
-        strcat(info, "チャージ");
+        str_append(info, sizeof(info), "チャージ");
     }
     if (buf[12] == 0x77) {
-        strcat(info, "オートチャージ");
+        str_append(info, sizeof(info), "オートチャージ");
     }
     if (buf[12] == 0x7A) {
-        strcat(info, "新規");
+        str_append(info, sizeof(info), "新規");
     }
     if (buf[12] == 0x83) {
-        strcat(info, "ポイント交換チャージ");
+        str_append(info, sizeof(info), "ポイント交換チャージ");
     }
     printf("%s\n", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
     
     tmp = buf[21];
@@ -770,24 +772,24 @@ void parse_history_nanaco(uint8_t *buf)
     tmp = buf[22] & 0x1E;
     tmp = (tmp >> 1);
     snprintf(info2, sizeof(info2), "%02d月", tmp);
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
 
     tmp = buf[22];
     tmp = (tmp << 8) + buf[23];
     tmp = (tmp >> 4) & 0x001F;
     snprintf(info2, sizeof(info2), "%02d日 ", tmp);
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
 
     tmp = buf[23];
     tmp = (tmp << 8) + buf[24];
     tmp = (tmp >> 6) & 0x3F;
     snprintf(info2, sizeof(info2), "%02d:", tmp);
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
 
     tmp = buf[24];
     tmp = tmp & 0x3F;
     snprintf(info2, sizeof(info2), "%02d\r", tmp);
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
     printf("%s", info);
     tp.printf("%s", info);
 
@@ -837,10 +839,10 @@ void parse_history_waon(uint8_t *buf)
                 snprintf(info, sizeof(info), "端末番号: ");
                 for (int ch = 0; ch <= 12; ch++) {
                     snprintf(info2, sizeof(info2), "%c", buf[12 + ch]);
-                    strcat(info, info2);
+                    str_append(info, sizeof(info), info2);
                 }
                 snprintf(info2, sizeof(info2), " (%ld)\r", tmp);
-                strcat(info, info2);
+                str_append(info, sizeof(info), info2);
                 printf("%s", info);
                 tp.printf("%s", info);
                 next_valid = 1;
@@ -888,9 +890,9 @@ void parse_history_waon(uint8_t *buf)
                     snprintf(info2, sizeof(info2), "不明(%02lX)", tmp);
                     break;
             }
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
             printf("%s\n", info);
-            strcat(info, "\r");
+            str_append(info, sizeof(info), "\r");
             tp.printf("%s", info);
 
             tmp = buf[12 + 2];
@@ -900,21 +902,21 @@ void parse_history_waon(uint8_t *buf)
             tmp = buf[12 + 2];
             tmp = ((tmp & 0x7) << 1) + ((buf[12 + 3] >> 7 ) & 0x01);
             snprintf(info2, sizeof(info2), "%2ld月", tmp);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
 
             tmp = ((buf[12 + 3] >> 2) & 0x1F);
             snprintf(info2, sizeof(info2), "%2ld日 ", tmp);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
 
             tmp = ((buf[12 + 3] << 3 ) & 0x18);
             tmp = tmp + ((buf[12 + 4] >> 5) & 0x7);
             snprintf(info2, sizeof(info2), "%02ld:", tmp);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
 
             tmp = (buf[12 + 4] & 0x1F);
             tmp = (tmp << 1) + ((buf[12 + 5] >> 7) & 0x01);
             snprintf(info2, sizeof(info2), "%02ld\r", tmp);
-            strcat(info, info2);
+            str_append(info, sizeof(info), info2);
             printf("%s", info);
             tp.printf("%s", info);
 
@@ -924,7 +926,7 @@ void parse_history_waon(uint8_t *buf)
             if (tmp != 0) {
                 snprintf(info, sizeof(info), "利用額: %ld円", tmp);
                 printf("%s\n", info);
-                strcat(info, "\r");
+                str_append(info, sizeof(info), "\r");
                 tp.printf("%s", info);
             }
 
@@ -934,7 +936,7 @@ void parse_history_waon(uint8_t *buf)
             if (tmp != 0) {
                 snprintf(info, sizeof(info), "チャージ額: %ld円", tmp);
                 printf("%s\n", info);
-                strcat(info, "\r");
+                str_append(info, sizeof(info), "\r");
                 tp.printf("%s", info);
             }
 
@@ -943,7 +945,7 @@ void parse_history_waon(uint8_t *buf)
             tmp = (tmp << 3) + ((buf[12 + 7] & 0xE0) >> 5);
             snprintf(info, sizeof(info), "残高: %ld円", tmp);
             printf("%s\n", info);
-            strcat(info, "\r\r");
+            str_append(info, sizeof(info), "\r\r");
             tp.printf("%s", info);
 
         }
@@ -994,14 +996,14 @@ void parse_history_edy(uint8_t *buf)
             snprintf(info2, sizeof(info2), "不明(%d) ", buf[0]);
             break;
     }
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
     printf("%s\n", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
     
     snprintf(info, sizeof(info), "利用日時: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
     printf("%s\n", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
 
     tmp = buf[8];
@@ -1010,7 +1012,7 @@ void parse_history_edy(uint8_t *buf)
     tmp = (tmp << 8) + buf[11];
     snprintf(info, sizeof(info), "利用額: %ld円", tmp);
     printf("%s\n", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
     
     tmp = buf[12];
@@ -1019,7 +1021,7 @@ void parse_history_edy(uint8_t *buf)
     tmp = (tmp << 8) + buf[15];
     snprintf(info, sizeof(info), "残高: %ld円", tmp);
     printf("%s\n", info);
-    strcat(info, "\r\r");
+    str_append(info, sizeof(info), "\r\r");
     tp.printf("%s", info);
 }
 
@@ -1036,16 +1038,16 @@ void parse_history_ecomyca(uint8_t *buf)
     snprintf(info, sizeof(info), "機種種別: ");
     switch (buf[9] & 0xF0) {
         case 0x20:
-            strcat(info, "鉄道\r");
+            str_append(info, sizeof(info), "鉄道\r");
             break;
         case 0x70:
-            strcat(info, "窓口精算機\r");
+            str_append(info, sizeof(info), "窓口精算機\r");
             break;
         case 0x90:
-            strcat(info, "運賃箱カードリーダー\r");
+            str_append(info, sizeof(info), "運賃箱カードリーダー\r");
             break;
         default:
-            strcat(info, "不明\r");
+            str_append(info, sizeof(info), "不明\r");
             break;
     }
     printf("%s", info);
@@ -1054,26 +1056,26 @@ void parse_history_ecomyca(uint8_t *buf)
     switch (buf[9] & 0x0F) {
         case 0x00:
         case 0x0A:
-            strcat(info, "新規");
+            str_append(info, sizeof(info), "新規");
             break;
         case 0x02:
-            strcat(info, "支払い");
+            str_append(info, sizeof(info), "支払い");
             break;
         default:
-            strcat(info, "不明");
+            str_append(info, sizeof(info), "不明");
             break;
     }
     printf("%s\r", info);
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     tp.printf("%s", info);
 
     snprintf(info, sizeof(info), "処理日付: %d/%02d/%02d", 2000+(buf[0]>>1), ((buf[0]&1)<<3 | ((buf[1]&0xe0)>>5)), buf[1]&0x1f);
     snprintf(info2, sizeof(info2), " %02d:%02d", ((buf[2] & 0xfc) >> 2), ((buf[2] & 0x03) << 4) | (buf[3] & 0xf0) >> 4);
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
     snprintf(info2, sizeof(info2), " %02d:%02d", (buf[3] & 0x0f) << 2 | ((buf[4] & 0xc0) >> 6), (buf[4] & 0x3f));
-    strcat(info, info2);
+    str_append(info, sizeof(info), info2);
 
-    strcat(info, "\r");
+    str_append(info, sizeof(info), "\r");
     printf("%s", info);
     tp.printf("%s", info);
 
@@ -1082,7 +1084,7 @@ void parse_history_ecomyca(uint8_t *buf)
     snprintf(info, sizeof(info), "残額: %d円", (buf[0xe]<<8) + buf[0xf]); 
     printf("%s\n", info);
     tp.setDoubleSizeWidth();
-    strcat(info, "\r\r");
+    str_append(info, sizeof(info), "\r\r");
     tp.printf("%s", info);
     tp.clearDoubleSizeWidth();
 }
@@ -1155,6 +1157,7 @@ int get_station_name(char *buf, int area, int line, int station) {
         }
 
         if (offset >= sc_utf8_len) {
+            buf[0] = '\0';
             ret = -1;
             break;
         }
@@ -1162,49 +1165,57 @@ int get_station_name(char *buf, int area, int line, int station) {
     return ret;
 }
 
-void get_bus_name(char *buf, int code) {
+void get_bus_name(char *buf, size_t size, int code) {
     char tmp[60];
     switch(code) {
         case 0x0907:
-            strcat(buf, "北海道中央バス");
+            str_append(buf, size, "北海道中央バス");
             break;
         case 0x090C:
-            strcat(buf, "函館バス");
+            str_append(buf, size, "函館バス");
             break;
         case 0x090D:
-            strcat(buf, "岩手県交通");
+            str_append(buf, size, "岩手県交通");
             break;
         case 0x0A0D:
-            strcat(buf, "昭和自動車");
+            str_append(buf, size, "昭和自動車");
             break;
         case 0x0A1F:
-            strcat(buf, "松浦鉄道");
+            str_append(buf, size, "松浦鉄道");
             break;
         case 0x0C0C:
-            strcat(buf, "関東自動車");
+            str_append(buf, size, "関東自動車");
             break;
         case 0x0C4A:
-            strcat(buf, "都営バス・都電");
+            str_append(buf, size, "都営バス・都電");
             break;
         case 0x0C6B:
-            strcat(buf, "神奈中バス");
+            str_append(buf, size, "神奈中バス");
             break;
         case 0x0C85:
-            strcat(buf, "東急世田谷線");
+            str_append(buf, size, "東急世田谷線");
             break;
         case 0x0C8A:
-            strcat(buf, "JR東日本");
+            str_append(buf, size, "JR東日本");
             break;
         case 0x0D18:
-            strcat(buf, "しずてつジャストライン");
+            str_append(buf, size, "しずてつジャストライン");
             break;
         case 0xA001:
-            strcat(buf, "西鉄バス");
+            str_append(buf, size, "西鉄バス");
             break;
         default:
             snprintf(tmp, sizeof(tmp), "不明 (%04X)", code);
-            strcat(buf, tmp);
+            str_append(buf, size, tmp);
             break;
+    }
+}
+
+void str_append(char *dst, size_t size, const char *src)
+{
+    size_t len = strnlen(dst, size);
+    if (len < size) {
+        snprintf(dst + len, size - len, "%s", src);
     }
 }
 
