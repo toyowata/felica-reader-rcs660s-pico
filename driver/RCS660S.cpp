@@ -193,7 +193,7 @@ int RCS660S::cardCommand(
     buf[1] = 0xC2; // INS
     buf[2] = 0x00; // P1
     buf[3] = 0x01; // P2 (Transparent Exchange)
-    buf[4] = (uint8_t)(commandLen + 11); // Lc
+    buf[4] = (uint8_t)(commandLen + 10); // Lc
 
     // Timer Data Object
     buf[5] = 0x5F;
@@ -206,14 +206,13 @@ int RCS660S::cardCommand(
     buf[10] = (uint8_t)((timeout_us >> 16) & 0xFF);
     buf[11] = (uint8_t)((timeout_us >> 24) & 0xFF);
 
-    // Transceive Data Object
+    // Transceive Data Object (FeliCa frame: LEN + command, LEN includes itself)
     buf[12] = 0x95;
-    buf[13] = (uint8_t)(commandLen + 2);
-    buf[14] = (uint8_t)(commandLen + 2);
+    buf[13] = (uint8_t)(commandLen + 1);
+    buf[14] = (uint8_t)(commandLen + 1);
     memcpy(buf + 15, command, commandLen);
-    buf[15 + commandLen] = 0x00;
 
-    uint32_t apdu_len = 16 + commandLen;
+    uint32_t apdu_len = 15 + commandLen;
 
     if (!write_apdu(buf, apdu_len)) {
         return 0;
