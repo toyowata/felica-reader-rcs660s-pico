@@ -1140,7 +1140,7 @@ void parse_history_ecomyca(uint8_t *buf)
 int requestService(uint16_t serviceCode){
     int ret;
     uint8_t buf[RCS660S_MAX_CARD_BUFFER_LEN];
-    uint8_t responseLen = 0;
+    uint16_t responseLen = 0;
     
     buf[0] = 0x02;
     memcpy(buf + 1, rcs660s.idm, 8);
@@ -1148,7 +1148,7 @@ int requestService(uint16_t serviceCode){
     buf[10] = (uint8_t)((serviceCode >> 0) & 0xff);
     buf[11] = (uint8_t)((serviceCode >> 8) & 0xff);
     
-    ret = rcs660s.cardCommand(buf, 12, buf, &responseLen);
+    ret = rcs660s.cardCommand(buf, 12, buf, sizeof(buf), &responseLen);
     
     if (!ret || (responseLen != 12) || (buf[0] != 0x03) ||
         (memcmp(buf + 1, rcs660s.idm, 8) != 0) || ((buf[10] == 0xff) && (buf[11] == 0xff))) {
@@ -1158,9 +1158,10 @@ int requestService(uint16_t serviceCode){
     return 1;
 }
 
+// buf は RCS660S_MAX_CARD_BUFFER_LEN バイト以上であること
 int readEncryption(uint16_t serviceCode, uint8_t blockNumber, uint8_t *buf){
     int ret;
-    uint8_t responseLen = 0;
+    uint16_t responseLen = 0;
     
     buf[0] = 0x06;
     memcpy(buf + 1, rcs660s.idm, 8);
@@ -1171,7 +1172,7 @@ int readEncryption(uint16_t serviceCode, uint8_t blockNumber, uint8_t *buf){
     buf[13] = 0x80;
     buf[14] = blockNumber;
     
-    ret = rcs660s.cardCommand(buf, 15, buf, &responseLen);
+    ret = rcs660s.cardCommand(buf, 15, buf, RCS660S_MAX_CARD_BUFFER_LEN, &responseLen);
     
     if (!ret || (responseLen != 28) || (buf[0] != 0x07) ||
         (memcmp(buf + 1, rcs660s.idm, 8) != 0)) {

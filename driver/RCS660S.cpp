@@ -161,12 +161,9 @@ int RCS660S::cardCommand(
     uint8_t* responseLen)
 {
     uint16_t rlen = 0;
-    int ret = cardCommand(command, commandLen, response, &rlen);
+    int ret = cardCommand(command, commandLen, response, RCS660S_MAX_CARD_RESPONSE_LEN, &rlen);
     if (!ret) {
         return 0;
-    }
-    if (rlen > RCS660S_MAX_CARD_RESPONSE_LEN) {
-        rlen = RCS660S_MAX_CARD_RESPONSE_LEN;
     }
     if (responseLen != nullptr) {
         *responseLen = (uint8_t)rlen;
@@ -178,6 +175,7 @@ int RCS660S::cardCommand(
     const uint8_t* command,
     uint8_t commandLen,
     uint8_t* response,
+    uint16_t responseSize,
     uint16_t* responseLen)
 {
     if (command == nullptr || response == nullptr || responseLen == nullptr) {
@@ -232,8 +230,14 @@ int RCS660S::cardCommand(
         return 0;
     }
 
+    if (buf[23] == 0) {
+        return 0;
+    }
     uint16_t card_res_len = (uint16_t)(buf[23] - 1);
-    if ((uint16_t)(25 + card_res_len) > buf_len) {
+    if ((uint32_t)(25 + card_res_len) > buf_len) {
+        return 0;
+    }
+    if (card_res_len > responseSize) {
         return 0;
     }
 

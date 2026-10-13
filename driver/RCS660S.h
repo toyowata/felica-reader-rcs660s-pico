@@ -48,6 +48,7 @@ public:
         const uint8_t* command,
         uint8_t commandLen,
         uint8_t* response,
+        uint16_t responseSize,
         uint16_t* responseLen);
     int rfOff(void);
 
