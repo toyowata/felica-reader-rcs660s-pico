@@ -130,7 +130,7 @@ int main() {
     lcd.printf(0, 1, (char*)"Reader  ");
 
     stdio_init_all();
-    
+
     // RC-S660Sおよび電源の立ち上がりを待機
     sleep_ms(1000);
 
@@ -148,191 +148,175 @@ int main() {
     while (1) {
         uint32_t balance = 0;
         uint8_t buf[RCS660S_MAX_CARD_BUFFER_LEN];
+        bool cardFound = false;
         int isCaptured = 0;
-        
+
+        // ループ内で最初に検出したIDmを前回のカードと比較し、カードが変わったかを判定する
+        // (おサイフケータイ等はシステムごとにIDmが異なるため、最初に取得したIDmのみを使う)
+        auto checkCard = [&]() {
+            if (!cardFound) {
+                cardFound = true;
+                isCaptured = (memcmp(idm, rcs660s.idm, 8) != 0);
+                memcpy(idm, rcs660s.idm, 8);
+            }
+            return isCaptured;
+        };
+
         rcs660s.timeout = COMMAND_TIMEOUT;
-        
+
         // サイバネ領域
         if (rcs660s.polling(CYBERNE_SYSTEM_CODE)
         || rcs660s.polling(SAPICA_SYSTEM_CODE)
         || rcs660s.polling(PASPY_SYSTEM_CODE) ) {
             // Suica, PASMO等の交通系ICカード
-            if (requestService(PASSNET_SERVICE_CODE)) {
+            if (requestService(PASSNET_SERVICE_CODE) && checkCard()) {
+                // カード変更
+                char info[40];
+                snprintf(info, sizeof(info), "IDm: %02x%02x-%02x%02x-%02x%02x-%02x%02x", idm[0], idm[1], idm[2], idm[3], idm[4], idm[5], idm[6], idm[7]);
+                printf("%s\n", info);
+
+                memset(buffer, 0, sizeof(buffer));
                 for (int i = 0; i < 20; i++) {
                     if (readEncryption(PASSNET_SERVICE_CODE, i, buf)) {
                         memcpy(buffer[i], &buf[12], 16);
                     }
                 }
-                if (memcmp(idm, buf + 1, 8) != 0) {
-                    // カード変更
-                    isCaptured = 1;
-                    memcpy(idm, buf + 1, 8);
-                    char info[40];
-                    snprintf(info, sizeof(info), "IDm: %02x%02x-%02x%02x-%02x%02x-%02x%02x", idm[0], idm[1], idm[2], idm[3], idm[4], idm[5], idm[6], idm[7]);
-                    printf("%s\n", info);
+
+                memset(attr, 0, sizeof(attr));
+                if (!requestService(FELICA_ATTRIBUTE_CODE) || !readEncryption(FELICA_ATTRIBUTE_CODE, 0, attr)) {
+                    // 属性情報が読めない場合は、次回のポーリングで再度読み取る
+                    printf("[ERROR] 属性情報の読み取りに失敗しました\n");
+                    memset(idm, 0, sizeof(idm));
                 }
                 else {
-                    // 前と同じカード
-                    isCaptured = 0;
-                }
-            }
-            if (isCaptured) {
-                if (requestService(FELICA_ATTRIBUTE_CODE)) {
-                    readEncryption(FELICA_ATTRIBUTE_CODE, 0, attr);
-                }
+                    // 残高取得
+                    balance = attr[12+12];                  // 12 byte目
+                    balance = (balance << 8) + attr[12+11]; // 11 byte目
 
-                // 残高取得
-                balance = attr[12+12];                  // 12 byte目
-                balance = (balance << 8) + attr[12+11]; // 11 byte目
-
-                // カード種別判定
-                char card[9];
-                if ((attr[12+8] & 0xF0) == 0x30) {
-                    strcpy(card, "ICOCA");
-                }
-                else {
-                    if (requestService(KITACA_SERVICE_CODE)) {
-                        strcpy(card, "Kitaca");
+                    // カード種別判定
+                    char card[9];
+                    if ((attr[12+8] & 0xF0) == 0x30) {
+                        strcpy(card, "ICOCA");
                     }
-                    else if (requestService(TOICA_SERVICE_CODE)) {
-                        strcpy(card, "toica");
-                    }
-                    else if (requestService(SUGOCA_SERVICE_CODE)) {
-                        strcpy(card, "SUGOCA");
-                    }
-                    else if (requestService(PITAPA_SERVICE_CODE)) {
-                        strcpy(card, "PiTaPa");
-                    }
-                    else if (requestService(PASMO_SERVICE_CODE)) {
-                        strcpy(card, "PASMO");
-                    }
-                    else if (requestService(SAPICA_SERVICE_CODE)) {
-                        strcpy(card, "SAPICA");
-                    }
-                    else if (requestService(MANACA_SERVICE_CODE)) {
-                        strcpy(card, "manaca");
-                    }
-                    else if (requestService(NIMOCA_SERVICE_CODE)) {
-                        strcpy(card, "nimoca");
-                    }
-                    else if (requestService(SUICA_PLUS_SERVICE_CODE)) {
-                        strcpy(card, "Suica+");
-                    }
-                    else if (requestService(SUICA_SERVICE_CODE)) {
-                        strcpy(card, "Suica");
-                    }                    
-                    else if (requestService(HAYAKAKEN_SERVICE_CODE)) {
-                        strcpy(card, "Hayaka");
-                    }                    
-                    else if (requestService(PASPY_SERVICE_CODE)) {
-                        strcpy(card, "PASPY");
-                    }
-                    else if (requestService(WSUICA_SERVICE_CODE)) {
-                        strcpy(card, "W-Suica");
-                    }                    
                     else {
-                        strcpy(card, "Suica-IO");
+                        if (requestService(KITACA_SERVICE_CODE)) {
+                            strcpy(card, "Kitaca");
+                        }
+                        else if (requestService(TOICA_SERVICE_CODE)) {
+                            strcpy(card, "toica");
+                        }
+                        else if (requestService(SUGOCA_SERVICE_CODE)) {
+                            strcpy(card, "SUGOCA");
+                        }
+                        else if (requestService(PITAPA_SERVICE_CODE)) {
+                            strcpy(card, "PiTaPa");
+                        }
+                        else if (requestService(PASMO_SERVICE_CODE)) {
+                            strcpy(card, "PASMO");
+                        }
+                        else if (requestService(SAPICA_SERVICE_CODE)) {
+                            strcpy(card, "SAPICA");
+                        }
+                        else if (requestService(MANACA_SERVICE_CODE)) {
+                            strcpy(card, "manaca");
+                        }
+                        else if (requestService(NIMOCA_SERVICE_CODE)) {
+                            strcpy(card, "nimoca");
+                        }
+                        else if (requestService(SUICA_PLUS_SERVICE_CODE)) {
+                            strcpy(card, "Suica+");
+                        }
+                        else if (requestService(SUICA_SERVICE_CODE)) {
+                            strcpy(card, "Suica");
+                        }
+                        else if (requestService(HAYAKAKEN_SERVICE_CODE)) {
+                            strcpy(card, "Hayaka");
+                        }
+                        else if (requestService(PASPY_SERVICE_CODE)) {
+                            strcpy(card, "PASPY");
+                        }
+                        else if (requestService(WSUICA_SERVICE_CODE)) {
+                            strcpy(card, "W-Suica");
+                        }
+                        else {
+                            strcpy(card, "Suica-IO");
+                        }
                     }
-                }
 
-                // 残高表示
-                printBalanceLCD(card , balance);
+                    // 残高表示
+                    printBalanceLCD(card , balance);
 
-                // 履歴表示
-                for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
-                    if (buffer[i][0] != 0) {
-                        parse_history_suica(&buffer[i][0]);
+                    // 履歴表示
+                    for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
+                        if (buffer[i][0] != 0) {
+                            parse_history_suica(&buffer[i][0]);
+                        }
                     }
+                    tp.putLineFeed(4);
                 }
-                tp.putLineFeed(4);
-                isCaptured = 0;
             }
         }
-        
+
         // 共通領域
-        else if (rcs660s.polling(COMMON_SYSTEM_CODE)){
+        else if (rcs660s.polling(COMMON_SYSTEM_CODE) && checkCard()) {
             // Edy
-            if (requestService(EDY_ATTRIBUTE_CODE) && readEncryption(EDY_ATTRIBUTE_CODE, 0, buf)) {                    
-                if (memcmp(idm, &buf[12 + 2], 8) != 0) {
-                    isCaptured = 1;
-                    memcpy(idm, &buf[12 + 2], 8);
-                }
-                else {
-                    isCaptured = 0;
-                }
-                if (requestService(EDY_ATTRIBUTE_CODE) && readEncryption(EDY_ATTRIBUTE_CODE, 0, buf) && isCaptured) {                    
-                    char info[80];
-                    snprintf(info, sizeof(info), "Edy ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12+2], buf[12+3], buf[12+4], buf[12+5], buf[12+6], buf[12+7], buf[12+8], buf[12+9]);
+            if (requestService(EDY_ATTRIBUTE_CODE) && readEncryption(EDY_ATTRIBUTE_CODE, 0, buf)) {
+                char info[80];
+                snprintf(info, sizeof(info), "Edy ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12+2], buf[12+3], buf[12+4], buf[12+5], buf[12+6], buf[12+7], buf[12+8], buf[12+9]);
+                printf("%s\n", info);
+                strcat(info, "\r");
+                tp.printf("%s", info);
+
+                int tmp;
+                tmp = buf[12 + 10];
+                int day = ((tmp << 8) + buf[12+11]) >> 1;
+                int sec = ((buf[12 + 11] & 1) << 16) + (buf[12 + 12] << 8) + buf[12 + 13];
+
+                const struct tm *pt = edy_time(day, sec);
+                if (pt != NULL) {
+                    snprintf(info, sizeof(info), "発行日: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
                     printf("%s\n", info);
                     strcat(info, "\r");
                     tp.printf("%s", info);
-                    
-                    int tmp;
-                    tmp = buf[12 + 10];
-                    int day = ((tmp << 8) + buf[12+11]) >> 1;
-                    int sec = ((buf[12 + 11] & 1) << 16) + (buf[12 + 12] << 8) + buf[12 + 13];
-
-                    const struct tm *pt = edy_time(day, sec);
-                    if (pt != NULL) {
-                        snprintf(info, sizeof(info), "発行日: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
-                        printf("%s\n", info);
-                        strcat(info, "\r");
-                        tp.printf("%s", info);
-                    }
                 }
-                if (requestService(EDY_SERVICE_CODE) && readEncryption(EDY_SERVICE_CODE, 0, buf) && isCaptured) {
+
+                if (requestService(EDY_SERVICE_CODE) && readEncryption(EDY_SERVICE_CODE, 0, buf)) {
+                    // Little Endianで入っているEdyの残高を取り出す
                     balance = buf[12 + 0];
-                    balance += (buf[12 + 1] << 8);
-                    balance += (buf[12 + 2] << 8);
-                    balance += (buf[12 + 3] << 8);
+                    balance += ((uint32_t)buf[12 + 1] << 8);
+                    balance += ((uint32_t)buf[12 + 2] << 16);
+                    balance += ((uint32_t)buf[12 + 3] << 24);
                     printBalanceLCD("Edy", balance);
                 }
-                if (isCaptured) {
-                    char info[80];
-                    for (int i = 0; i < 6; i++) {
-                        if (readEncryption(EDY_HISTORY_CODE, i, buf) && isCaptured) {
-                            memcpy(buffer[i], &buf[12], 16);
-                        }
+
+                memset(buffer, 0, sizeof(buffer));
+                for (int i = 0; i < 6; i++) {
+                    if (readEncryption(EDY_HISTORY_CODE, i, buf)) {
+                        memcpy(buffer[i], &buf[12], 16);
                     }
-                    for (int i = 5; i >= 0; i--) {
-                        if (isCaptured) {
-                            parse_history_edy(&buffer[i][0]);
-                        }
-                    }
-                    tp.setDoubleSizeWidth();
-                    sprintf(info, "\r残高 %ld円\r\r", balance);
-                    tp.printf("%s", info);
-                    //tp.printf("\r残高 %ld円\r\r", balance);
-                    tp.clearDoubleSizeWidth();
-                    tp.putLineFeed(3);
                 }
+                for (int i = 5; i >= 0; i--) {
+                    // 読み取れなかった履歴は0のままなので、parse_history_edy()内でスキップされる
+                    parse_history_edy(&buffer[i][0]);
+                }
+                tp.setDoubleSizeWidth();
+                sprintf(info, "\r残高 %ld円\r\r", balance);
+                tp.printf("%s", info);
+                //tp.printf("\r残高 %ld円\r\r", balance);
+                tp.clearDoubleSizeWidth();
+                tp.putLineFeed(3);
             }
-            
+
             // nanaco
             if (requestService(NANACO_ID_CODE) && readEncryption(NANACO_ID_CODE, 0, buf)) {
-                if (memcmp(idm, &buf[12], 8) != 0) {
+                char info[40];
+                snprintf(info, sizeof(info), "nanaco ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
+                printf("%s\n", info);
+                strcat(info, "\r");
+                tp.printf("%s", info);
+
+                if (requestService(NANACO_POINT_CODE) && readEncryption(NANACO_POINT_CODE, 1, buf)) {
                     uint32_t point;
-                    char info[40];
-                    memcpy(idm, &buf[12], 8);
-                    snprintf(info, sizeof(info), "nanaco ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
-                    printf("%s\n", info);
-                    strcat(info, "\r");
-                    tp.printf("%s", info);
-                    readEncryption(NANACO_POINT_CODE, 1, buf);
-                    point = buf[12 + 1];
-                    point = (point << 8) + buf[12 + 2];
-                    snprintf(info, sizeof(info), "nanacoポイント: %ldpt", point);
-                    printf("%s\n\n", info);
-                    strcat(info, "\r\r");
-                    tp.printf("%s", info);
-                    isCaptured = 1;
-                }
-                else {
-                    isCaptured = 0;
-                }
-                if (requestService(NANACO_POINT_CODE) && readEncryption(NANACO_POINT_CODE, 1, buf) && isCaptured) {
-                    uint32_t point;
-                    char info[40];
                     point = buf[12 + 1];
                     point = (point << 8) + buf[12 + 2];
                     snprintf(info, sizeof(info), "nanacoポイント: %ldpt", point);
@@ -340,12 +324,12 @@ int main() {
                     strcat(info, "\r\r");
                     tp.printf("%s", info);
                 }
-                if (requestService(NANACO_BALANCE_CODE) && readEncryption(NANACO_BALANCE_CODE, 0, buf) && isCaptured) {
+                if (requestService(NANACO_BALANCE_CODE) && readEncryption(NANACO_BALANCE_CODE, 0, buf)) {
                     // Little Endianで入っているnanacoの残高を取り出す
                     balance = buf[12 + 0];
-                    balance += (buf[12 + 1] << 8);
-                    balance += (buf[12 + 2] << 8);
-                    balance += (buf[12 + 3] << 8);
+                    balance += ((uint32_t)buf[12 + 1] << 8);
+                    balance += ((uint32_t)buf[12 + 2] << 16);
+                    balance += ((uint32_t)buf[12 + 3] << 24);
                     // 残高表示
                     printBalanceLCD("nanaco", balance);
 
@@ -367,19 +351,13 @@ int main() {
 
             // waon
             if (requestService(WAON_SERVICE_ID) && readEncryption(WAON_SERVICE_ID, 0, buf)) {
-                if (memcmp(idm, &buf[12], 8) != 0) {
-                    char info[40];
-                    isCaptured = 1;
-                    memcpy(idm, &buf[12], 8);
-                    snprintf(info, sizeof(info), "WAON ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
-                    printf("%s\n\n", info);
-                    strcat(info, "\r\r");
-                    tp.printf("%s", info);
-                }
-                else {
-                    isCaptured = 0;
-                }
-                if (requestService(WAON_SERVICE_CODE1) && readEncryption(WAON_SERVICE_CODE1, 0, buf) && isCaptured) {
+                char info[40];
+                snprintf(info, sizeof(info), "WAON ID: %02x%02x-%02x%02x-%02x%02x-%02x%02x", buf[12], buf[13], buf[14], buf[15], buf[16], buf[17], buf[18], buf[19]);
+                printf("%s\n\n", info);
+                strcat(info, "\r\r");
+                tp.printf("%s", info);
+
+                if (requestService(WAON_SERVICE_CODE1) && readEncryption(WAON_SERVICE_CODE1, 0, buf)) {
                     // Little Endianで入っているwaonの残高を取り出す
                     balance = buf[13];
                     balance = (balance << 8) + buf[12];
@@ -390,7 +368,6 @@ int main() {
 
                     printf("残高 %ld円\n", balance);
                     tp.setDoubleSizeWidth();
-                    char info[40];
                     sprintf(info, "残高 %ld円\r\r", balance);
                     tp.printf("%s", info);
                     //tp.printf("残高 %ld円\r\r", balance);
@@ -399,88 +376,69 @@ int main() {
                 }
             }
         }
-        if (rcs660s.polling(ECOMYCA_SYSTEM_CODE)) {
+        if (rcs660s.polling(ECOMYCA_SYSTEM_CODE) && checkCard()) {
             char info[80];
             if (requestService(ECOMYCA_SERVICE_CODE0) && readEncryption(ECOMYCA_SERVICE_CODE0, 1, buf)) {
-                if (memcmp(idm, &buf[12 + 8], 8) != 0) {
-                    memcpy(idm, &buf[12 + 8], 8);
-                    isCaptured = 1;
+                printf("\n");
+                for (int i = 0; i < 16; i++) {
+                    printf("%02X ", buf[12 + i]);
                 }
-                else {
-                    isCaptured = 0;
-                }
-                if (isCaptured) {
-                    printf("\n");
-                    for (int i = 0; i < 16; i++) {
-                        printf("%02X ", buf[12 + i]);
-                    }
-                    printf("\n");
+                printf("\n");
 
-                    snprintf(info, sizeof(info), "カード発行日: %d/%02d/%02d", 2000+(buf[12 + 0]>>1), ((buf[12 + 0]&1)<<3 | ((buf[12 + 1]&0xe0)>>5)), buf[12 + 1]&0x1f);
-                    printf("%s\r", info);
-                    snprintf(info, sizeof(info), "IDm: %02x%02x-%02x%02x", idm[4], idm[5], idm[6], idm[7]);
-                    printf("%s\n", info);
-                }
-                
+                snprintf(info, sizeof(info), "カード発行日: %d/%02d/%02d", 2000+(buf[12 + 0]>>1), ((buf[12 + 0]&1)<<3 | ((buf[12 + 1]&0xe0)>>5)), buf[12 + 1]&0x1f);
+                printf("%s\r", info);
+                snprintf(info, sizeof(info), "IDm: %02x%02x-%02x%02x", buf[12 + 12], buf[12 + 13], buf[12 + 14], buf[12 + 15]);
+                printf("%s\n", info);
             }
 
-            if (requestService(ECOMYCA_SERVICE_CODE1) && readEncryption(ECOMYCA_SERVICE_CODE1, 0, buf) && isCaptured) {
+            if (requestService(ECOMYCA_SERVICE_CODE1) && readEncryption(ECOMYCA_SERVICE_CODE1, 0, buf)) {
                 balance = buf[12 + 1];
                 balance += (buf[12 + 0] << 8);
                 printBalanceLCD("ecomyca", balance);
             }
-            if (isCaptured) {
-                for (int i = 0; i < 20; i++) {
-                    if (readEncryption(ECOMYCA_SERVICE_CODE2, i, buf)) {
-                        memcpy(buffer[i], &buf[12], 16);
-                    }
+
+            memset(buffer, 0, sizeof(buffer));
+            for (int i = 0; i < 20; i++) {
+                if (readEncryption(ECOMYCA_SERVICE_CODE2, i, buf)) {
+                    memcpy(buffer[i], &buf[12], 16);
                 }
-                // 履歴表示
-                for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
-                    if (buffer[i][0] != 0) {
-                        parse_history_ecomyca(&buffer[i][0]);
-                    }
+            }
+            // 履歴表示
+            for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
+                if (buffer[i][0] != 0) {
+                    parse_history_ecomyca(&buffer[i][0]);
                 }
             }
         }
-        if (rcs660s.polling(RYUTO_SYSTEM_CODE)) {
+        if (rcs660s.polling(RYUTO_SYSTEM_CODE) && checkCard()) {
             char info[80];
             if (requestService(RYUTO_SERVICE_CODE0) && readEncryption(RYUTO_SERVICE_CODE0, 1, buf)) {
-                if (memcmp(idm, &buf[12 + 8], 8) != 0) {
-                    memcpy(idm, &buf[12 + 8], 8);
-                    isCaptured = 1;
+                printf("\n");
+                for (int i = 0; i < 16; i++) {
+                    printf("%02X ", buf[12 + i]);
                 }
-                else {
-                    isCaptured = 0;
-                }
-                if (isCaptured) {
-                    printf("\n");
-                    for (int i = 0; i < 16; i++) {
-                        printf("%02X ", buf[12 + i]);
-                    }
-                    printf("\n");
+                printf("\n");
 
-                    snprintf(info, sizeof(info), "カード発行日: %d/%02d/%02d", 2000+(buf[12 + 0]>>1), ((buf[12 + 0]&1)<<3 | ((buf[12 + 1]&0xe0)>>5)), buf[12 + 1]&0x1f);
-                    printf("%s\n", info);
-                }
+                snprintf(info, sizeof(info), "カード発行日: %d/%02d/%02d", 2000+(buf[12 + 0]>>1), ((buf[12 + 0]&1)<<3 | ((buf[12 + 1]&0xe0)>>5)), buf[12 + 1]&0x1f);
+                printf("%s\n", info);
             }
 
-            if (requestService(RYUTO_SERVICE_CODE1) && readEncryption(RYUTO_SERVICE_CODE1, 0, buf) && isCaptured) {
+            if (requestService(RYUTO_SERVICE_CODE1) && readEncryption(RYUTO_SERVICE_CODE1, 0, buf)) {
                 balance = buf[12 + 11];
                 balance += (buf[12 + 10] << 8);
                 printBalanceLCD("RYUTO", balance);
             }
-            if (isCaptured) {
-                for (int i = 0; i < 20; i++) {
-                    if (readEncryption(RYUTO_SERVICE_CODE1, i, buf)) {
-                        memcpy(buffer[i], &buf[12], 16);
-                    }
+
+            memset(buffer, 0, sizeof(buffer));
+            for (int i = 0; i < 20; i++) {
+                if (readEncryption(RYUTO_SERVICE_CODE1, i, buf)) {
+                    memcpy(buffer[i], &buf[12], 16);
                 }
-                // 履歴表示
-                for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
-                    if (buffer[i][0] != 0) {
-                        parse_history_ecomyca(&buffer[i][0]);
-                    }
+            }
+            // 履歴表示
+            for (int i = (PRINT_ENTRIES - 1); i >= 0; i--) {
+                if (buffer[i][0] != 0) {
+                    parse_history_ecomyca(&buffer[i][0]);
                 }
             }
         }
