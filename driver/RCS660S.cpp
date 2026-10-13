@@ -188,37 +188,50 @@ int RCS660S::cardCommand(
     uint8_t buf[RCS660S_BUFFER_SIZE];
     uint16_t buf_len = 0;
 
-    // Build command APDU
-    buf[0] = 0xFF; // CLA
-    buf[1] = 0xC2; // INS
-    buf[2] = 0x00; // P1
-    buf[3] = 0x01; // P2 (Transparent Exchange)
-    buf[4] = (uint8_t)(commandLen + 10); // Lc
+    // カードから応答がない場合 (SW 64 01) はリトライする
+    // buf はレスポンスで上書きされるため、送信ごとにAPDUを組み立て直す
+    for (int attempt = 0; ; attempt++) {
+        // Build command APDU
+        buf[0] = 0xFF; // CLA
+        buf[1] = 0xC2; // INS
+        buf[2] = 0x00; // P1
+        buf[3] = 0x01; // P2 (Transparent Exchange)
+        buf[4] = (uint8_t)(commandLen + 10); // Lc
 
-    // Timer Data Object
-    buf[5] = 0x5F;
-    buf[6] = 0x46;
-    buf[7] = 0x04;
-    uint32_t timeout_us = this->timeout * 1000;
-    if (timeout_us == 0) timeout_us = 60000;
-    buf[8]  = (uint8_t)(timeout_us & 0xFF);
-    buf[9]  = (uint8_t)((timeout_us >> 8) & 0xFF);
-    buf[10] = (uint8_t)((timeout_us >> 16) & 0xFF);
-    buf[11] = (uint8_t)((timeout_us >> 24) & 0xFF);
+        // Timer Data Object
+        buf[5] = 0x5F;
+        buf[6] = 0x46;
+        buf[7] = 0x04;
+        uint32_t timeout_us = this->timeout * 1000;
+        if (timeout_us == 0) timeout_us = 60000;
+        buf[8]  = (uint8_t)(timeout_us & 0xFF);
+        buf[9]  = (uint8_t)((timeout_us >> 8) & 0xFF);
+        buf[10] = (uint8_t)((timeout_us >> 16) & 0xFF);
+        buf[11] = (uint8_t)((timeout_us >> 24) & 0xFF);
 
-    // Transceive Data Object (FeliCa frame: LEN + command, LEN includes itself)
-    buf[12] = 0x95;
-    buf[13] = (uint8_t)(commandLen + 1);
-    buf[14] = (uint8_t)(commandLen + 1);
-    memcpy(buf + 15, command, commandLen);
+        // Transceive Data Object (FeliCa frame: LEN + command, LEN includes itself)
+        buf[12] = 0x95;
+        buf[13] = (uint8_t)(commandLen + 1);
+        buf[14] = (uint8_t)(commandLen + 1);
+        memcpy(buf + 15, command, commandLen);
 
-    uint32_t apdu_len = 15 + commandLen;
+        uint32_t apdu_len = 15 + commandLen;
 
-    if (!write_apdu(buf, apdu_len)) {
-        return 0;
-    }
-    if (!receive_ccid_response(buf, &buf_len)) {
-        return 0;
+        // 前の応答から次のコマンドまでの間隔を確保する
+        sleep_us(RCS660S_COMMAND_INTERVAL_US);
+
+        if (!write_apdu(buf, apdu_len)) {
+            return 0;
+        }
+        if (!receive_ccid_response(buf, &buf_len)) {
+            return 0;
+        }
+
+        bool no_response = (buf_len >= 15 && buf[0] == 0x83 &&
+                            memcmp(buf + 10, "\xC0\x03\x02\x64\x01", 5) == 0);
+        if (!no_response || attempt >= RCS660S_CARD_COMMAND_RETRY) {
+            break;
+        }
     }
 
     if (buf_len < 25 || buf[0] != 0x83 || buf[7] != 0x02) {

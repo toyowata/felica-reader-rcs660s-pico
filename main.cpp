@@ -18,7 +18,7 @@
 
 // RCS660S
 #define PUSH_TIMEOUT                  2100
-#define COMMAND_TIMEOUT               400
+#define COMMAND_TIMEOUT               100
 #define POLLING_INTERVAL              200
 #define RCS660S_MAX_CARD_BUFFER_LEN   30
  

@@ -26,6 +26,8 @@
 
 #define RCS660S_DEFAULT_TIMEOUT          1000
 #define RCS660S_UART_TIMEOUT_MARGIN      100
+#define RCS660S_CARD_COMMAND_RETRY       3
+#define RCS660S_COMMAND_INTERVAL_US      5000
 #define RCS660S_BUFFER_SIZE              512
 
 /* --------------------------------
