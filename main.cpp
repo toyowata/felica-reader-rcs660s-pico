@@ -81,6 +81,7 @@ void parse_history_edy(uint8_t *buf);
 void parse_history_ecomyca(uint8_t *buf);
 int get_station_name(char *buf, int area, int line, int station);
 void get_bus_name(char *buf, int code);
+const struct tm *edy_time(int day, int sec);
 
 const uint32_t record_length = (3 + 40 + 40);
 
@@ -271,20 +272,13 @@ int main() {
                     int day = ((tmp << 8) + buf[12+11]) >> 1;
                     int sec = ((buf[12 + 11] & 1) << 16) + (buf[12 + 12] << 8) + buf[12 + 13];
 
-                    struct tm tm, *pt;
-                    time_t t = (time_t)(-1);
-                    tm.tm_year = 2000 - 1900;
-                    tm.tm_mon = 1 - 1;
-                    tm.tm_mday = 1 + day;
-                    tm.tm_hour = 0;
-                    tm.tm_min = 0;
-                    tm.tm_sec = sec;
-                    t = mktime(&tm);
-                    pt = localtime(&t);
-                    snprintf(info, sizeof(info), "発行日: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
-                    printf("%s\n", info);
-                    strcat(info, "\r");
-                    tp.printf("%s", info);
+                    const struct tm *pt = edy_time(day, sec);
+                    if (pt != NULL) {
+                        snprintf(info, sizeof(info), "発行日: %d年%d月%d日 %02d:%02d", pt->tm_year+1900, pt->tm_mon+1, pt->tm_mday, pt->tm_hour, pt->tm_min);
+                        printf("%s\n", info);
+                        strcat(info, "\r");
+                        tp.printf("%s", info);
+                    }
                 }
                 if (requestService(EDY_SERVICE_CODE) && readEncryption(EDY_SERVICE_CODE, 0, buf) && isCaptured) {
                     balance = buf[12 + 0];
@@ -1018,17 +1012,11 @@ void parse_history_edy(uint8_t *buf)
     }
     int sec = ((buf[5]&1) << 16) + (buf[6] << 8) + buf[7];
 
-    struct tm tm, *pt;
-    time_t t = (time_t)(-1);
-    tm.tm_year = 2000 - 1900;
-    tm.tm_mon = 1 - 1;
-    tm.tm_mday = 1 + day;
-    tm.tm_hour = 0;
-    tm.tm_min = 0;
-    tm.tm_sec = sec;
-    t = mktime(&tm);
-    pt = localtime(&t);
-    
+    const struct tm *pt = edy_time(day, sec);
+    if (pt == NULL) {
+        return;
+    }
+
     snprintf(info, sizeof(info), "-----\n");
     printf("%s", info);
     tp.printf("\r");
@@ -1045,7 +1033,7 @@ void parse_history_edy(uint8_t *buf)
             snprintf(info2, sizeof(info2), "支払い ");
             break;
         default:
-            snprintf(info2, sizeof(info2), "不明(%d) ", buf[12]);
+            snprintf(info2, sizeof(info2), "不明(%d) ", buf[0]);
             break;
     }
     strcat(info, info2);
@@ -1260,4 +1248,19 @@ void get_bus_name(char *buf, int code) {
             strcat(buf, tmp);
             break;
     }
+}
+
+// Edyの日時 (2000/01/01からの経過日数と秒数) を変換する
+const struct tm *edy_time(int day, int sec)
+{
+    struct tm tm = {};  // tm_isdst を含む全フィールドを0で初期化
+    tm.tm_year = 2000 - 1900;
+    tm.tm_mon = 1 - 1;
+    tm.tm_mday = 1 + day;
+    tm.tm_sec = sec;
+    time_t t = mktime(&tm);
+    if (t == (time_t)(-1)) {
+        return NULL;
+    }
+    return localtime(&t);
 }
