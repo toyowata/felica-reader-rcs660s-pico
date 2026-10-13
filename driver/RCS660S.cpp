@@ -314,7 +314,7 @@ void RCS660S::writeSerial(const uint8_t* data, uint16_t len) {
 
 int RCS660S::readSerial(uint8_t* data, uint16_t len) {
     uint16_t nread = 0;
-    absolute_time_t timeout_time = make_timeout_time_ms(this->timeout);
+    absolute_time_t timeout_time = make_timeout_time_ms(this->timeout + RCS660S_UART_TIMEOUT_MARGIN);
 
     while (nread < len) {
         if (uart_is_readable(this->uart_ch)) {
